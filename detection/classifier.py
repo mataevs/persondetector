@@ -23,11 +23,17 @@ def trainClassifier(datasetDir, noFeatures, noNegSamplesPerImg, noEstimators, cl
     with open(featureCoordsOutput, 'w') as output:
         pickle.dump(inria.getFeatureCoords(), output)
 
-def loadClassifier(datasetDir, classifierInput, featureCoordsInput):
+def loadClassifier(classifierInput, featureCoordsInput):
     print "Loading classifier"
 
     classifier = pickle.load(open(classifierInput, 'r'))
     featureCoords = pickle.load(open(featureCoordsInput, 'r'))
+
+    return classifier, featureCoords
+
+
+def testInria(datasetDir, classifierInput, featureCoordsInput):
+    classifier, featureCoords = loadClassifier(classifierInput, featureCoordsInput)
 
     inria = InriaLoader(datasetDir)
     inria.setFeatureCoords(featureCoords)
@@ -41,4 +47,4 @@ def loadClassifier(datasetDir, classifierInput, featureCoordsInput):
 
 # trainClassifier("/home/mataevs/ptz/INRIAPerson", 500, 5, 100, "adaboost.tmp", "features.txt")
 
-loadClassifier("/home/mataevs/ptz/INRIAPerson", "adaboost.tmp", "features.txt")
+# loadClassifier("/home/mataevs/ptz/INRIAPerson", "adaboost.tmp", "features.txt")

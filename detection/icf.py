@@ -6,9 +6,12 @@ import math
 
 
 class ImageProcessor:
-    def __init__(self, path):
+    def __init__(self, path, scale=1.0):
         self.path = path
         self.bgr = cv2.imread(self.path)
+
+        if scale != 1.0:
+            self.bgr = cv2.resize(self.bgr, (0, 0), fx=scale, fy=scale)
 
     def smooth(self):
         self.bgr = cv2.GaussianBlur(self.bgr, (1, 1), 1)
@@ -18,6 +21,9 @@ class ImageProcessor:
 
     def getHeight(self):
         return self.bgr.shape[0]
+
+    def getImage(self):
+        return self.bgr
 
     def getLUVIntegralChannels(self):
         self.luv = cv2.cvtColor(self.bgr, cv2.COLOR_BGR2LUV)
