@@ -16,11 +16,27 @@ def keystroke(event):
     global zoom
 
     print event.keysym, event.keycode
+
+    if event.keycode == 10:
+        pan = 200
+        tilt = 58
+        zoom = 1
+        ptz_control.setPTZ(pan, tilt, zoom)
+    elif event.keycode == 11:
+        pan = 135
+        tilt = 55
+        zoom = 1
+        ptz_control.setPTZ(pan, tilt, zoom)
+    elif event.keycode == 14:
+        pan = 300
+        tilt = 33
+        zoom = 1
+        ptz_control.setPTZ(pan, tilt, zoom)
     if event.keycode == 113:
-        pan -= 5
+        pan = (pan - 5) % 360
         ptz_control.setPTZ(pan, tilt, zoom)
     elif event.keycode == 114:
-        pan += 5
+        pan = (pan + 5) % 360
         ptz_control.setPTZ(pan, tilt, zoom)
     elif event.keycode == 111:
         tilt -= 5
@@ -46,7 +62,7 @@ root.resizable(False, False)
 tbk = StreamViewer(root)
 
 # Initialize camera pan and tilt
-pan = 156
+pan = 300
 tilt = 48
 zoom = 1
 ptz_control.setPTZ(pan, tilt, zoom)
