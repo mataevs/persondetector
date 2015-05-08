@@ -10,26 +10,40 @@ from StreamViewer import StreamViewer
 import os
 import datetime
 
+
+fixed_positions = [(155, 23), (140, 38), (140, 53), (230, 73), (310, 38), (275, 33)]
+
 def keystroke(event):
     global pan
     global tilt
     global zoom
 
+    global position
+    global fixed_positions
+
     print event.keysym, event.keycode
 
-    if event.keycode == 10:
+    if event.keycode == 57: # key 'n'
+        position = (position + 1) % len(fixed_positions)
+        pan, tilt = fixed_positions[position]
+        ptz_control.setPTZ(pan, tilt, zoom)
+    elif event.keycode == 33:
+        position = (position - 1) % len(fixed_positions)
+        pan, tilt = fixed_positions[position]
+        ptz_control.setPTZ(pan, tilt, zoom)
+    elif event.keycode == 10: # key 1
         pan = 200
         tilt = 58
         zoom = 1
         ptz_control.setPTZ(pan, tilt, zoom)
-    elif event.keycode == 11:
+    elif event.keycode == 11: # key 2
         pan = 135
         tilt = 55
         zoom = 1
         ptz_control.setPTZ(pan, tilt, zoom)
-    elif event.keycode == 14:
+    elif event.keycode == 14: # key 5
         pan = 300
-        tilt = 33
+        tilt = 48
         zoom = 1
         ptz_control.setPTZ(pan, tilt, zoom)
     if event.keycode == 113:
@@ -62,8 +76,8 @@ root.resizable(False, False)
 tbk = StreamViewer(root)
 
 # Initialize camera pan and tilt
-pan = 300
-tilt = 48
+pan, tilt = fixed_positions[0]
+position = 0
 zoom = 1
 ptz_control.setPTZ(pan, tilt, zoom)
 

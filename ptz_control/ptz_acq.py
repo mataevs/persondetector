@@ -14,7 +14,7 @@ from imageUtil import *
 from PIL import Image
 
 # the IP of the PTZ camera
-ip = '192.168.0.100'
+ip = '172.16.5.217'
 
 # various parameters for the request sent to the camera's server; 'msubmenu=jpg' is required, 
 # the rest can be altered according to specifications (resolution: 1 (640x480), 3 (320x240); frate: 1 - 25)
