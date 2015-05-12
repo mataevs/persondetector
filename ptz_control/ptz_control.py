@@ -9,7 +9,7 @@ from requests.auth import HTTPDigestAuth
 from requests.auth import HTTPBasicAuth
 
 # the IP of the PTZ camera
-ip = '192.168.0.100'
+ip = '172.16.5.217'
 
 # user and password required by the PTZ camera (default values for Samsung SNP-3120V)
 username = 'admin'
