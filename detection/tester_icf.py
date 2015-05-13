@@ -5,6 +5,7 @@ import utils
 import pickle
 import random
 import cv2
+import numpy
 
 def train():
     posImages = utils.getFullImages(
@@ -32,15 +33,49 @@ def load_classifier(path):
         c = pickle.load(input)
     return c
 
-def test_img(c, img_path, scale):
-    results, classes = c.testImage(img_path, scale=scale)
+# def test_img(c, img_path, scale):
+#     results, classes = c.testImage(img_path, scale=scale)
+#
+#     def maxFunc(p):
+#             return p[2][1]
+#
+#     bestIndex = results.index(max(results, key=maxFunc))
+#
+#     return (results[bestIndex][0], results[bestIndex][1], 64, 128)
+
+def test_img(c, img_path, scales):
+    results = []
+    classes = []
+    sc = []
+
+    for scale in scales:
+        res, cls = c.testImage(img_path, scale=scale)
+
+        results = results + res
+        classes = numpy.concatenate((classes, cls))
+        for i in range(0, len(res)):
+            sc.append(scale)
+
 
     def maxFunc(p):
-            return p[2][1]
+        return p[2][1]
 
-    bestIndex = results.index(max(results, key=maxFunc))
+    # print len(results)
 
-    return (results[bestIndex][0], results[bestIndex][1], 64, 128)
+    maxRes = max(results, key=maxFunc)
+
+    for i in range(0, len(results)):
+        result = results[i]
+        if result[0] == maxRes[0] and result[1] == maxRes[1] and (result[2] == maxRes[2]).all():
+            bestIndex = i
+            break
+
+    if classes[bestIndex] != 1:
+        return None
+
+    print "max prob icf = " + str(results[bestIndex][2][1])
+
+    return (results[bestIndex][0], results[bestIndex][1], 64, 128, sc[bestIndex])
 
 
 def test(scale=0.6):

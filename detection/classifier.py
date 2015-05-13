@@ -39,8 +39,8 @@ class Classifier:
         imgProcessor.getIntegralChannels(6)
 
         windows = []
-        for startx in xrange(16, imgProcessor.getWidth() - 64 - 16, 16):
-            for starty in xrange(16, imgProcessor.getHeight() - 128 - 16, 16):
+        for startx in xrange(0, imgProcessor.getWidth() - 64, 16):
+            for starty in xrange(0, imgProcessor.getHeight() - 128, 16):
                 windows.append((startx, starty, imgProcessor.getFeature(startx, starty, self.featureCoords)))
 
         probs = self.classifier.predict_proba([w[2] for w in windows])

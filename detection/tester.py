@@ -1,85 +1,165 @@
 __author__ = 'mataevs'
 
-from classifier import Classifier
-import utils
-import pickle
-import random
+import tester_hog
+import tester_icf
 import cv2
+import random
+import utils
+import time
+import csv
 
-def train():
-    posImages = utils.getFullImages(
-        "/home/mataevs/ptz/INRIAPerson/train/pos",
-        "/home/mataevs/ptz/positive")
 
-    posImages = utils.randomize(posImages)
-
-    negImages = utils.getFullImages(
-        "/home/mataevs/ptz/INRIAPerson/train/neg",
-        "/home/mataevs/ptz/negative")
-    negImages = utils.randomize(negImages)
-
-    print len(posImages)
-    print len(negImages)
-
-    c = Classifier()
-    print "Starting training"
-    c.train(posImages, negImages, 200, 300)
-    print "Finished training"
-    c.saveClassifier("classifier_all_200.dump")
-
-def test(scale=0.6):
-    with open("classifier.dump") as input:
-        c = pickle.load(input)
-
-    # testImages = utils.getFullImages(
-    #     "/home/mataevs/ptz/dumpNew1",
-    #     "/home/mataevs/ptz/dumpNew2",
-    #     "/home/mataevs/ptz/dumpNew3",
-    #     "/home/mataevs/ptz/ns1",
-    #     "/home/mataevs/ptz/ns2",
-    #     "/home/mataevs/ptz/ns3",
-    #     "/home/mataevs/ptz/ns4")
+def test_all(icf_classifier_file, hog_classifier_file, scale=0.6):
+    print "foo"
+    icf_classifier = tester_icf.load_classifier(icf_classifier_file)
+    hog_classifier = tester_hog.load_classifier(hog_classifier_file)
 
     testImages = utils.getFullImages(
-        "/home/mataevs/ptz/INRIAPerson/Test/pos"
-    )
+        "/home/mataevs/ptz/dumpNew1",
+        "/home/mataevs/ptz/dumpNew2",
+        "/home/mataevs/ptz/dumpNew3")
+    #     # "/home/mataevs/ptz/ns1",
+    #     # "/home/mataevs/ptz/ns2",
+    #     # "/home/mataevs/ptz/ns3",
+    #     # "/home/mataevs/ptz/ns4")
+
+    # testImages = utils.getFullImages(
+    #     "/home/mataevs/ptz/ptz_code/dump_05_05_01_50",
+    #     "/home/mataevs/ptz/ptz_code/dump_05_05_01_51"
+    #     #"/home/mataevs/ptz/ptz_code/dump_05_05_11_54"
+    # )
 
     while True:
         imgPath = random.choice(testImages)
 
-        results, classes = c.testImage(imgPath, scale=scale)
+        before = time.time()
+
+        bestWindowIcf = tester_icf.test_img(icf_classifier, imgPath, scale)
+
+        afterIcf = time.time() - before
+
+        before = time.time()
+
+        bestWindowHog = tester_hog.test_img(hog_classifier, imgPath, scale)
+
+        afterHog = time.time() - before
+
+        print time.time()
+
+        print "icf=" + str(afterIcf) + " hog=" + str(afterHog)
 
         img = cv2.imread(imgPath)
-        img = cv2.resize(img, (0, 0), fx=scale, fy=scale)
 
-        # rects = []
-        # for i in xrange(0, len(results)):
-        #     if classes[i] == 1:
-        #         rects.append((results[i][0], results[i][1], 64, 128))
-        # draw_detections(img, rects)
+        img_icf = cv2.resize(img, (0, 0), fx=scale, fy=scale)
+        utils.draw_detections(img_icf, [bestWindowIcf])
+        cv2.imshow("icf", img_icf)
 
-        def maxFunc(p):
-            return p[2][1]
+        img_hog = cv2.resize(img, (0, 0), fx=scale, fy=scale)
+        utils.draw_detections(img_hog, [bestWindowHog])
+        cv2.imshow("hog", img_hog)
 
-        bestIndex = results.index(max(results, key=maxFunc))
+        key = cv2.waitKey(0)
 
-        print imgPath
-        print results[bestIndex]
-        print classes[bestIndex]
+        if key == 27:
+            exit(1)
 
-        draw_detections(img, [(results[bestIndex][0], results[bestIndex][1], 64, 128)])
+def test_hog_pyramid(hog_classifier_file):
 
+    hog_classifier = tester_hog.load_classifier(hog_classifier_file)
 
-        cv2.imshow("detection", img)
+    testImages = utils.getFullImages(
+        "/home/mataevs/ptz/ptz_code/dump_05_05_01_50")
+
+    while True:
+        imgPath = random.choice(testImages)
+
+        img = cv2.imread(imgPath)
+
+        scale = 0.6
+        while scale >= 0.3:
+            print scale
+            bestWindowHog = tester_hog.test_img(hog_classifier, imgPath, scale)
+
+            img_hog = cv2.resize(img, (0, 0), fx=scale, fy=scale)
+            utils.draw_detections(img_hog, [bestWindowHog])
+            cv2.imshow("hog_" + str(scale), img_hog)
+
+            scale -= 0.05
+
         key = cv2.waitKey(0)
 
         if key == 27:
             exit(1)
 
 
-def draw_detections(img, rects, thickness = 1):
-    for i in range(len(rects)):
-        x, y, w, h = rects[i]
-        cv2.rectangle(img, (x, y), (x+w, y+h), (0, 255, 0), thickness)
+def test_multiscale(hog_classifier_file, icf_classifier_file):
+    hog_classifier = tester_hog.load_classifier(hog_classifier_file)
+    icf_classifier = tester_icf.load_classifier(icf_classifier_file)
 
-test(0.4)
+    filepaths = [
+        "/home/mataevs/ptz/ptz_code/dump_05_05_01_50",
+        "/home/mataevs/code/persondetector/ptz_control/dump_12_05_18_24"
+    ]
+
+    testImages = utils.getFullImages(*filepaths)
+
+    metadata = utils.parseMetadata(*filepaths)
+
+    scales = [
+        [0.45, 0.5, 0.55],
+        [0.4, 0.45, 0.5],
+        [0.3, 0.35],
+        [0.3]
+    ]
+    scaleSteps = [35, 45, 65, 90]
+
+    while True:
+        imgPath = random.choice(testImages)
+
+        img = cv2.imread(imgPath)
+
+        tilt = int(metadata[imgPath]['tilt'])
+
+        print tilt
+
+        imgScales = []
+        for i in range(0, len(scaleSteps)):
+            if tilt < scaleSteps[i]:
+                imgScales = scales[i]
+                break
+
+        print imgScales
+
+        bestWindowHog = tester_hog.test_img(hog_classifier, imgPath, imgScales)
+        if bestWindowHog != None:
+            scale = bestWindowHog[4]
+            print "best scale hog = " + str(scale)
+            img_hog = cv2.resize(img, (0, 0), fx=scale, fy=scale)
+            utils.draw_detections(img_hog, [bestWindowHog[0:4]])
+            cv2.imshow("hog", img_hog)
+        else:
+            scale = 0.5
+            img_hog = cv2.resize(img, (0, 0), fx=scale, fy=scale)
+            cv2.imshow("hog", img_hog)
+
+        bestWindowIcf = tester_icf.test_img(icf_classifier, imgPath, imgScales)
+        if bestWindowIcf != None:
+            scale = bestWindowIcf[4]
+            print "best scale icf = " + str(scale)
+            img_icf = cv2.resize(img, (0, 0), fx=scale, fy=scale)
+            utils.draw_detections(img_icf, [bestWindowIcf[0:4]])
+            cv2.imshow("icf", img_icf)
+        else:
+            scale = 0.5
+            img_icf = cv2.resize(img, (0, 0), fx=scale, fy=scale)
+            cv2.imshow("icf", img_icf)
+
+        key = cv2.waitKey(0)
+
+        if key == 27:
+            exit(1)
+
+
+
+# test_all("icf/classifier_230.dump", "hog/svm.dump", 0.4)
+test_multiscale("hog/svm.dump", "icf/classifier_230.dump")
