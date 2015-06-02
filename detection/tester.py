@@ -6,7 +6,7 @@ import cv2
 import random
 import utils
 import time
-import csv
+import os
 
 
 def test_all(icf_classifier_file, hog_classifier_file, scale=0.6):
@@ -92,14 +92,32 @@ def test_hog_pyramid(hog_classifier_file):
             exit(1)
 
 
-def test_multiscale(hog_classifier_file, icf_classifier_file):
+def test_multiscale(
+        hog_classifier_file,
+        icf_classifier_file,
+        hog_result_dir,
+        icf_result_dir,
+        no_samples):
     hog_classifier = tester_hog.load_classifier(hog_classifier_file)
     icf_classifier = tester_icf.load_classifier(icf_classifier_file)
 
     filepaths = [
-        "/home/mataevs/ptz/ptz_code/dump_05_05_01_50",
-        "/home/mataevs/code/persondetector/ptz_control/dump_12_05_18_24"
+        "/home/mataevs/ptz/testsets/dump_05_05_01_50",
+        "/home/mataevs/ptz/testsets/dump_05_05_01_51",
+        "/home/mataevs/ptz/testsets/dump_05_05_11_54",
+        "/home/mataevs/ptz/testsets/dump_07_05_11_07",
+        "/home/mataevs/ptz/testsets/dump_07_05_11_40",
+        "/home/mataevs/ptz/testsets/dump_07_05_11_46",
+        "/home/mataevs/ptz/testsets/dump_07_05_11_49",
+        "/home/mataevs/ptz/testsets/dump_07_05_12_02",
+        "/home/mataevs/ptz/testsets/dump_07_05_12_03",
+        "/home/mataevs/ptz/testsets/dump_07_05_12_05",
     ]
+
+    if not os.path.exists(hog_result_dir):
+        os.makedirs(hog_result_dir)
+    if not os.path.exists(icf_result_dir):
+        os.makedirs(icf_result_dir)
 
     testImages = utils.getFullImages(*filepaths)
 
@@ -113,7 +131,8 @@ def test_multiscale(hog_classifier_file, icf_classifier_file):
     ]
     scaleSteps = [35, 45, 65, 90]
 
-    while True:
+    for sample in range(0, no_samples):
+        print "### Sample " + str(sample) + " ###"
         imgPath = random.choice(testImages)
 
         img = cv2.imread(imgPath)
@@ -136,11 +155,10 @@ def test_multiscale(hog_classifier_file, icf_classifier_file):
             print "best scale hog = " + str(scale)
             img_hog = cv2.resize(img, (0, 0), fx=scale, fy=scale)
             utils.draw_detections(img_hog, [bestWindowHog[0:4]])
-            cv2.imshow("hog", img_hog)
         else:
             scale = 0.5
             img_hog = cv2.resize(img, (0, 0), fx=scale, fy=scale)
-            cv2.imshow("hog", img_hog)
+        cv2.imwrite(hog_result_dir + "/sample_2_" + str(sample) + ".jpg", img_hog)
 
         bestWindowIcf = tester_icf.test_img(icf_classifier, imgPath, imgScales)
         if bestWindowIcf != None:
@@ -153,13 +171,18 @@ def test_multiscale(hog_classifier_file, icf_classifier_file):
             scale = 0.5
             img_icf = cv2.resize(img, (0, 0), fx=scale, fy=scale)
             cv2.imshow("icf", img_icf)
+        cv2.imwrite(icf_result_dir + "/sample_2_" + str(sample) + ".jpg", img_icf)
 
-        key = cv2.waitKey(0)
-
-        if key == 27:
-            exit(1)
+        # key = cv2.waitKey(0)
+        #
+        # if key == 27:
+        #     exit(1)
 
 
 
 # test_all("icf/classifier_230.dump", "hog/svm.dump", 0.4)
-test_multiscale("hog/svm.dump", "icf/classifier_230.dump")
+test_multiscale("hog/svm.dump",
+                "icf/classifier_230.dump",
+                "./hog_result",
+                "./icf_result",
+                300)

@@ -5,6 +5,8 @@ from os.path import isfile, join, realpath
 import random
 import cv2
 import csv
+import datetime
+import time
 
 def getFullImages(*folders):
     files = [realpath(join(dir, f)) for dir in folders for f in listdir(dir) if isfile(join(dir, f))]
@@ -35,6 +37,11 @@ def parseMetadata(*dirpaths):
         with open(filepath) as metafile:
             metareader = csv.reader(metafile)
             for row in metareader:
-                metadata[dirpath + "/" + row[0] + ".jpg"] = {'time': row[1], 'pan': row[2], 'tilt': row[3], 'zoom': row[4]}
+                ts = datetime.datetime.strptime(row[1], "%Y-%m-%d %H:%M:%S.%f")
+                metadata[dirpath + "/" + row[0] + ".jpg"] = {
+                    'time': time.mktime(ts.timetuple()) * 1000 + ts.microsecond/1000,
+                    'pan': row[2],
+                    'tilt': row[3],
+                    'zoom': row[4]}
 
     return metadata
