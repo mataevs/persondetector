@@ -1,14 +1,9 @@
 from sklearn import svm
-import random
 from skimage.feature import hog
 import cv2
 from os.path import isfile, join
 from os import listdir
-import os
-import numpy as np
 from sklearn.externals import joblib
-import sys
-import uuid
 
 
 def cmp(prefix):
@@ -54,6 +49,7 @@ def train_classifier(pos_path, neg_path, pos_flow_path, neg_flow_path):
                  cells_per_block=(2, 2), visualise=False)
         fd_flow = hog(img_flow_bw, orientations=9, pixels_per_cell=(8, 8),
                       cells_per_block=(2, 2), visualise=False)
+
         fd = fd + fd_flow
 
         train_features.append(fd)

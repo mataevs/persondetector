@@ -9,6 +9,12 @@ class ImageProcessor:
     def __init__(self, path, scale=1.0):
         self.path = path
         self.bgr = cv2.imread(self.path)
+        self.luv = None
+        self.l = None
+        self.u = None
+        self.v = None
+        self.magnitudes = None
+        self.integrals = []
 
         if scale != 1.0:
             self.bgr = cv2.resize(self.bgr, (0, 0), fx=scale, fy=scale)
@@ -32,10 +38,10 @@ class ImageProcessor:
         self.v = cv2.integral(self.luv[:, :, 2])
         return [self.l, self.u, self.v]
 
-    def getGrayIntegralChannel(self):
-        self.gray = cv2.cvtColor(self.bgr, cv2.COLOR_BGR2GRAY)
-        self.g = cv2.integral(self.gray)
-        return self.g
+    # def getGrayIntegralChannel(self):
+    #     self.gray = cv2.cvtColor(self.bgr, cv2.COLOR_BGR2GRAY)
+    #     self.g = cv2.integral(self.gray)
+    #     return self.g
 
     def getIntegralHistogram(self, nbins):
         if hasattr(self, 'gray'):
@@ -52,7 +58,8 @@ class ImageProcessor:
         for i in xrange(0, nbins):
             bins.append(numpy.zeros(gray.shape, dtype=float))
 
-        self.integrals = []
+        magnitudes = numpy.zeros(gray.shape, dtype=float)
+
         for i in xrange(0, nbins):
             self.integrals.append(numpy.zeros((gray.shape[0] + 1, gray.shape[1] + 1), float))
 
@@ -64,35 +71,44 @@ class ImageProcessor:
                     temp_gradient = ((math.atan(sy[y, x] / (sx[y, x] + 0.00001))) * (180 / math.pi)) + 90
                 else:
                     temp_gradient = ((math.atan(sy[y, x] / sx[y, x])) * (180 / math.pi)) + 90
-                temp_magnitude = math.sqrt((sx[y, x] * sx[y, x]) + (sy[y, x] * sy[y, x]))
+                magnitudes[y, x] = math.sqrt((sx[y, x] * sx[y, x]) + (sy[y, x] * sy[y, x]))
 
                 for i in xrange(0, nbins):
                     if temp_gradient <= binStep * i:
-                        bins[i-1][y, x] = temp_magnitude
+                        bins[i-1][y, x] = magnitudes[y, x]
                         break
 
         for i in xrange(0, nbins):
             self.integrals[i] = cv2.integral(bins[i])
+        self.magnitudes = cv2.integral(magnitudes)
 
-        return self.integrals
+        # todo - create and return integral image for gradient magnitude
+
+        return self.integrals, self.magnitudes
 
     def getIntegralChannels(self, nbins):
         luv = self.getLUVIntegralChannels()
-        g = self.getGrayIntegralChannel()
-        hist = self.getIntegralHistogram(nbins)
-        return luv + [g] + hist
+        # g = self.getGrayIntegralChannel()
+        hist, magnitudes = self.getIntegralHistogram(nbins)
+        return luv + [magnitudes] + hist
 
     def getFeature(self, startx, starty, featureCoords):
         feature = []
 
         for coords in featureCoords:
-            feature.append(getIntegralValue(self.l, startx + coords[0], starty + coords[1], startx + coords[2], starty + coords[3]))
-            feature.append(getIntegralValue(self.u, startx + coords[0], starty + coords[1], startx + coords[2], starty + coords[3]))
-            feature.append(getIntegralValue(self.v, startx + coords[0], starty + coords[1], startx + coords[2], starty + coords[3]))
-            feature.append(getIntegralValue(self.g, startx + coords[0], starty + coords[1], startx + coords[2], starty + coords[3]))
+            rsx, rsy, rex, rey, channelNo = coords
 
-            for bin in self.integrals:
-                feature.append(getIntegralValue(bin, startx + coords[0], starty + coords[1], startx + coords[2], starty + coords[3]))
+            if channelNo == 0:
+                channel = self.l
+            elif channelNo == 1:
+                channel = self.u
+            elif channelNo == 2:
+                channel = self.v
+            elif channelNo == 3:
+                channel = self.magnitudes
+            else:
+                channel = self.integrals[channelNo-4]
+            feature.append(getIntegralValue(channel, startx+rsx, starty+rsy, startx+rex, starty+rey))
 
         return feature
 

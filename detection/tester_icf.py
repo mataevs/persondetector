@@ -6,8 +6,9 @@ import pickle
 import random
 import cv2
 import numpy
+import gc
 
-def train():
+def train(classifier_out_name, noInitialFeatures, noWantedFeatures, noEstimators):
     posImages = utils.getFullImages(
         "/home/mataevs/ptz/INRIAPerson/train/pos",
         "/home/mataevs/ptz/positive")
@@ -24,44 +25,31 @@ def train():
 
     c = Classifier()
     print "Starting training"
-    c.train(posImages, negImages, 200, 300)
+    c.train(posImages, negImages, initialFeatures=noInitialFeatures, wantedFeatures=noWantedFeatures, noEstimators=noEstimators)
     print "Finished training"
-    c.saveClassifier("classifier_all_200.dump")
+    c.saveClassifier(classifier_out_name)
 
 def load_classifier(path):
     with open(path) as input:
         c = pickle.load(input)
     return c
 
-# def test_img(c, img_path, scale):
-#     results, classes = c.testImage(img_path, scale=scale)
-#
-#     def maxFunc(p):
-#             return p[2][1]
-#
-#     bestIndex = results.index(max(results, key=maxFunc))
-#
-#     return (results[bestIndex][0], results[bestIndex][1], 64, 128)
-
-def test_img(c, img_path, scales):
+def test_img(c, img_path, scales, allPositive=False, subwindow=None):
     results = []
     classes = []
     sc = []
 
     for scale in scales:
-        res, cls = c.testImage(img_path, scale=scale)
+        res, cls = c.testImage(img_path, scale=scale, subwindow=subwindow)
 
         results = results + res
         classes = numpy.concatenate((classes, cls))
         for i in range(0, len(res)):
             sc.append(scale)
 
-
     def maxFunc(p):
         return p[2][1]
-
-    # print len(results)
-
+    print results
     maxRes = max(results, key=maxFunc)
 
     for i in range(0, len(results)):
@@ -73,13 +61,21 @@ def test_img(c, img_path, scales):
     if classes[bestIndex] != 1:
         return None
 
-    print "max prob icf = " + str(results[bestIndex][2][1])
+    if not allPositive:
+        # return the best window and the scale it was detected at
+        return (results[bestIndex][0], results[bestIndex][1], 64, 128, sc[bestIndex])
+    else:
+        # return all positive windows detected at the same scale as the best window
+        bestWindowScale = sc[bestIndex]
+        bestWindows = []
+        for i in range(0, len(classes)):
+            if classes[i] == 1 and sc[i] == bestWindowScale:
+                bestWindows.append((results[i][0], results[i][1], 64, 128, sc[i]))
+        return bestWindows
 
-    return (results[bestIndex][0], results[bestIndex][1], 64, 128, sc[bestIndex])
 
-
-def test(scale=0.6):
-    c = load_classifier("icf/classifier_230.dump")
+def test(input_classifier_name, scale=0.6):
+    c = load_classifier(input_classifier_name)
 
     # testImages = utils.getFullImages(
     #     "/home/mataevs/ptz/dumpNew1",
@@ -109,3 +105,6 @@ def test(scale=0.6):
 
         if key == 27:
             exit(1)
+
+if __name__ == "__main__":
+    train("icf_new_100f_30e.dump", 100, 100, 30)

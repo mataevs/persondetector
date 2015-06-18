@@ -4,6 +4,7 @@ import cv2
 from sklearn.externals import joblib
 from skimage.feature import hog
 import os
+import utils
 
 
 def load_classifier(filepath):
@@ -18,11 +19,10 @@ def get_prev_img(img_path):
     prev_img_path = os.path.join(dir, prev_img)
 
     print img_path
-    print prev_img_path
 
     return prev_img_path
 
-def test_img(svm, img_path, scales):
+def test_img(svm, img_path, scales, allPositive=False, subwindow=None, flow_rgb=None):
     base_img = cv2.imread(img_path)
 
     prev_img_path = get_prev_img(img_path)
@@ -35,24 +35,33 @@ def test_img(svm, img_path, scales):
         img = cv2.resize(base_img, (0, 0), fx=scale, fy=scale)
         img_bw = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-        prev_img = cv2.resize(base_prev_img, (0, 0), fx=scale, fy=scale)
-        prev_img_bw = cv2.cvtColor(prev_img, cv2.COLOR_BGR2GRAY)
-
         height, width, _ = img.shape
 
-        hsv = np.zeros_like(img)
-        hsv[..., 1] = 255
+        if flow_rgb == None:
+            prev_img = cv2.resize(base_prev_img, (0, 0), fx=scale, fy=scale)
+            prev_img_bw = cv2.cvtColor(prev_img, cv2.COLOR_BGR2GRAY)
 
-        flow = cv2.calcOpticalFlowFarneback(prev_img_bw, img_bw, 0.5, 3, 15, 3, 5, 1.2, 0)
+            hsv = np.zeros_like(img)
+            hsv[..., 1] = 255
 
-        mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
-        hsv[..., 0] = ang * 180/ np.pi / 2
-        hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
-        flow_bw = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
-        flow_bw = cv2.cvtColor(flow_bw, cv2.COLOR_BGR2GRAY)
+            flow = cv2.calcOpticalFlowFarneback(prev_img_bw, img_bw, 0.5, 3, 15, 3, 5, 1.2, 0)
 
-        for x in range(0, width - 64, 16):
-            for y in range(0, height - 128, 16):
+            mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
+            hsv[..., 0] = ang * 180/ np.pi / 2
+            hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
+            flowRGB = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+        else:
+            flowRGB = cv2.resize(flow_rgb, (0, 0), fx=scale, fy=scale)
+
+        flow_bw = cv2.cvtColor(flowRGB, cv2.COLOR_BGR2GRAY)
+
+        if subwindow == None:
+            nsx, nsy, nw, nh = 0, 0, width, height
+        else:
+            nsx, nsy, nw, nh = utils.getDetectionWindow(subwindow, width, height, scale)
+
+        for x in range(nsx, nsx + nw - 64, 16):
+            for y in range(nsy, nsy + nh - 128, 16):
                 img_crop = img_bw[y:y + 128, x:x + 64]
                 fd = hog(img_crop, orientations=9, pixels_per_cell=(8, 8),
                          cells_per_block=(2, 2), visualise=False)
@@ -60,7 +69,6 @@ def test_img(svm, img_path, scales):
                 flow_crop = flow_bw[y:y + 128, x:x + 64]
                 fd_flow = hog(flow_crop, orientations=9, pixels_per_cell=(8, 8),
                               cells_per_block=(2, 2), visualise=False)
-
                 fd = fd + fd_flow
 
                 windows.append((x, y, 64, 128, scale))
@@ -81,6 +89,12 @@ def test_img(svm, img_path, scales):
     if bestWindowIndex == -1:
         return None
 
-    print "max prob hog = " + str(maxProb)
-
-    return windows[bestWindowIndex]
+    if not allPositive:
+        return windows[bestWindowIndex]
+    else:
+        bestWindowScale = windows[bestWindowIndex][4]
+        results = []
+        for i in range(0, len(windows)):
+            if classes[i] == 1 and windows[i][4] == bestWindowScale:
+                results.append(windows[i])
+        return results
