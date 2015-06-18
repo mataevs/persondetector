@@ -43,7 +43,8 @@ def setPTZ(pan, tilt, zoom):
             sys.exit()
         else:
             if r.content == "OK":
-                print "Moved to ", pan, tilt, zoom
+                True
+                # print "Moved to ", pan, tilt, zoom
             else:
                 print "Command error"
 
