@@ -1,60 +1,73 @@
 __author__ = 'mataevs'
 
-import tester_icf
 import os
 import utils
 import cv2
 import time
 import classifier
+from classifier import *
 import detection_checker
 from collections import Counter
 
-def test_img(c, img_path, scales, allPositive=False, subwindow=None):
+def get_images(c, img_path, scales, subwindow=None):
+    totalWindows = []
+    for scale in scales:
+        windows = c.getWindowsAndDescriptors(img_path, scale=scale, subwindow=subwindow)
+        for i in range(0, len(windows)):
+            # each window: (x,y,w,h), [featureDescriptor]
+            x, y, w, h = windows[i][0]
+            windows[i][0] = (int(x / scale), int(y / scale), int(w / scale), int(h / scale))
+        totalWindows += windows
+    return totalWindows
+
+def get_decision_function(c, windows, thresh):
+    return c.getDecisionFunctions(windows, threshold=thresh)
+
+def test_img(c, img_path, scales, subwindow=None):
     results = []
     classes = []
     sc = []
 
     for scale in scales:
         res, cls = c.testImage(img_path, scale=scale, subwindow=subwindow)
-
         results = results + res
         classes = classes + cls
-        for i in range(0, len(res)):
-            sc.append(scale)
+        sc = sc + [scale] * len(res)
 
-    def maxFunc(p):
-        return p[2][1]
-    maxRes = max(results, key=maxFunc)
+    # def maxFunc(p):
+    #     return p[2][1]
+    #
+    # if results == []:
+    #     return []
+    # maxRes = max(results, key=maxFunc)
 
-    for i in range(0, len(results)):
-        result = results[i]
-        if result[0] == maxRes[0] and result[1] == maxRes[1] and (result[2] == maxRes[2]).all():
-            bestIndex = i
-            break
-
-    if classes[bestIndex] != 1:
-        return None
+    # for i in range(0, len(results)):
+    #     result = results[i]
+    #     if result[0] == maxRes[0] and result[1] == maxRes[1] and (result[2] == maxRes[2]).all():
+    #         bestIndex = i
+    #         break
 
     # return all positive windows detected at the same scale as the best window
-    bestWindowScale = sc[bestIndex]
-    bestWindows = []
+    # bestWindowScale = sc[bestIndex]
+    # bestWindows = []
+    windows = []
     for i in range(0, len(classes)):
-        if classes[i] == 1 and sc[i] == bestWindowScale:
-            bestWindows.append((results[i][0], results[i][1], 64, 128, sc[i]))
-    return bestWindows
+        if classes[i] == 1:
+            scale = sc[i]
+            windows.append((int(results[i][0] / scale), int(results[i][1] / scale), int(64 / scale), int(128 / scale)))
+
+    if len(windows) == 0:
+        return None
+    return windows
 
 
 def test_cascade(
-        icf_classifier_files,
+        classifier_file,
         icf_result_dir,
         checker,
         resultsFile):
 
-    classifiers = []
-    for classifier_file in icf_classifier_files:
-        classifiers.append(tester_icf.load_classifier(classifier_file))
-
-    cascade_detector = classifier.CascadeClassifier(classifiers)
+    cascade_detector = classifier.loadCascadeClassifier(classifier_file)
 
     filepaths = [
         "/home/mataevs/captures/metadata/dump_05_05_01_50",
@@ -92,7 +105,6 @@ def test_cascade(
     ]
     scaleSteps = [35, 45, 65, 90]
 
-    # resultsHog = open(resultsFile + "hog.txt", "w")
     resultsIcf = open(resultsFile + "cascade.txt", "w")
 
     sample = 0
@@ -119,19 +131,15 @@ def test_cascade(
         height, width, _ = img.shape
 
         before = time.time()
-        pos_windows = test_img(cascade_detector, imgPath, imgScales, allPositive=True, subwindow=boundingRect)
+        pos_windows = test_img(cascade_detector, imgPath, imgScales, subwindow=boundingRect)
         after = time.time()
 
         print "Sample", sample, "time elapsed=", after-before
 
         if pos_windows != None and pos_windows != []:
-            scale = pos_windows[0][4]
-            img_icf = cv2.resize(img, (0, 0), fx=scale, fy=scale)
-            utils.draw_detections(img_icf, pos_windows)
-        else:
-            scale = 0.5
-            img_icf = cv2.resize(img, (0, 0), fx=scale, fy=scale)
-        cv2.imwrite(icf_result_dir + "/sample_2_" + str(sample) + ".jpg", img_icf)
+            utils.draw_detections(img, pos_windows)
+
+        cv2.imwrite(icf_result_dir + "/sample_2_" + str(sample) + ".jpg", img)
 
         # Check detections
         detections, truePositive = checker.checkDetections(imgPath, pos_windows)
@@ -143,11 +151,11 @@ def test_cascade(
 
         sample += 1
 
-    # resultsHog.close()
     resultsIcf.close()
 
-checker = detection_checker.Checker("annotations.txt")
-test_cascade(["icf_new_100f_30e.dump", "icf_new_500f_100e.dump", "icf_new_5000f_2000e.dump"],
-                "./cascade_1",
-                checker,
-                "results_1_")
+if __name__ == "__main__":
+    checker = detection_checker.Checker("annotations.txt")
+    test_cascade("cascade_classifier_100_500_2k.dump",
+                 "cascade_5k_500",
+                 checker,
+                 "results_cascade_5k_500_")

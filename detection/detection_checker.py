@@ -23,6 +23,34 @@ class Checker:
     def getFileList(self):
         return self.entries.keys()
 
+    def getWindowsClasses(self, imgPath, rects):
+        legitRect = self.entries[imgPath]
+
+        if rects != None:
+            if legitRect == None:
+                return [-1] * len(rects)
+
+            xs2, ys2, xe2, ye2 = legitRect[0], legitRect[1], legitRect[0] + legitRect[2], legitRect[1] + legitRect[3]
+
+            results = []
+
+            for rect in rects:
+                if utils.rectOverlap(rect, legitRect):
+                    xs1, ys1, xe1, ye1 = rect[0], rect[1], rect[0] + rect[2], rect[1] + rect[3]
+
+                    areaIntersection = max(0, max(xe1, xe2) - min(xs1, xs2)) * max(0, max(ye1, ye2) - min(ys1, ys2))
+                    areaUnion = rect[2] * rect[3] + legitRect[2] * legitRect[3] - areaIntersection
+                    ratio = areaIntersection / areaUnion
+
+                    if ratio < 0.5:
+                        results.append(-1)
+                    else:
+                        results.append(1)
+                else:
+                    results.append(-1)
+            return results
+        return []
+
     def checkDetections(self, imgPath, rects):
         legitRect = self.entries[imgPath]
 
@@ -30,20 +58,17 @@ class Checker:
             if legitRect == None:
                 return [False] * len(rects), True
 
+            xs2, ys2, xe2, ye2 = legitRect[0], legitRect[1], legitRect[0] + legitRect[2], legitRect[1] + legitRect[3]
+
             trueDetections = False
             results = []
 
             for rect in rects:
-                scale, rect = rect[4], rect[0:4]
-
-                legitRectScaled = tuple(i * scale for i in legitRect)
-
-                if utils.rectOverlap(rect, legitRectScaled):
+                if utils.rectOverlap(rect, legitRect):
                     xs1, ys1, xe1, ye1 = rect[0], rect[1], rect[0] + rect[2], rect[1] + rect[3]
-                    xs2, ys2, xe2, ye2 = legitRectScaled[0], legitRectScaled[1], legitRectScaled[0] + legitRectScaled[2], legitRectScaled[1] + legitRectScaled[3]
 
                     areaIntersection = max(0, max(xe1, xe2) - min(xs1, xs2)) * max(0, max(ye1, ye2) - min(ys1, ys2))
-                    areaUnion = rect[2] * rect[3] + legitRectScaled[2] * legitRectScaled[3] - areaIntersection
+                    areaUnion = rect[2] * rect[3] + legitRect[2] * legitRect[3] - areaIntersection
                     ratio = areaIntersection / areaUnion
 
                     if ratio < 0.5:

@@ -13,11 +13,11 @@ def get_prev_img(img_path):
     p, ext = os.path.splitext(img_path)
     dir, f = os.path.split(p)
 
-    prev_img = "%04d" % (int(f) + 1,) + ext
+    prev_img = "%04d" % (int(f) - 1,) + ext
     prev_img_path = os.path.join(dir, prev_img)
 
+    print prev_img
     print img_path
-    print prev_img_path
 
     return prev_img_path
 
@@ -86,8 +86,5 @@ def getDetectionWindow(rectangle, width, height, scale):
     nsy = 0 if min(sy, cy - 128) < 0 else min(sy, cy - 128)
     nw = width - nsx if max(w, cx + 64) > width - nsx else max(w, cx + 64)
     nh = height - nsy if max(h, cy + 128) > height - nsy else max(h, cy + 128)
-    # nsx = 0 if sx - (64 - w % 64) - 1 < 0 else sx - (64 - w % 64) - 1
-    # nsy = 0 if sy - (128 - h % 128) - 1 < 0 else sy - (128 - h % 128) - 1
-    # nw = width - nsx if w + (64 - w % 64) + 1 > width - nsx else w + (64 - w % 64) + 1
-    # nh = height - nsy if h + (128 - h % 128) + 1 > height - nsy else h + (128 - h % 128) + 1
+
     return (int(nsx), int(nsy), int(nw), int(nh))

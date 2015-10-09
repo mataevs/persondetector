@@ -6,7 +6,6 @@ import pickle
 import random
 import cv2
 import numpy
-import gc
 
 def train(classifier_out_name, noInitialFeatures, noWantedFeatures, noEstimators):
     posImages = utils.getFullImages(

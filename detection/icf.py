@@ -13,6 +13,7 @@ class ImageProcessor:
         self.l = None
         self.u = None
         self.v = None
+        self.g = None
         self.magnitudes = None
         self.integrals = []
 
@@ -48,6 +49,7 @@ class ImageProcessor:
             gray = self.gray
         else:
             gray = cv2.cvtColor(self.bgr, cv2.COLOR_BGR2GRAY)
+            self.g = cv2.integral(gray)
 
         cv2.equalizeHist(gray, gray)
 
@@ -96,19 +98,33 @@ class ImageProcessor:
         feature = []
 
         for coords in featureCoords:
-            rsx, rsy, rex, rey, channelNo = coords
+            if len(coords) == 5:
+                # New feature type, with individual channel
+                rsx, rsy, rex, rey, channelNo = coords
 
-            if channelNo == 0:
-                channel = self.l
-            elif channelNo == 1:
-                channel = self.u
-            elif channelNo == 2:
-                channel = self.v
-            elif channelNo == 3:
-                channel = self.magnitudes
+                if channelNo == 0:
+                    channel = self.l
+                elif channelNo == 1:
+                    channel = self.u
+                elif channelNo == 2:
+                    channel = self.v
+                elif channelNo == 3:
+                    channel = self.magnitudes
+                else:
+                    channel = self.integrals[channelNo-4]
+                feature.append(getIntegralValue(channel, startx+rsx, starty+rsy, startx+rex, starty+rey))
             else:
-                channel = self.integrals[channelNo-4]
-            feature.append(getIntegralValue(channel, startx+rsx, starty+rsy, startx+rex, starty+rey))
+                # Old feature type, with common channels
+                f = []
+                for coords in featureCoords:
+                    f.append(getIntegralValue(self.l, startx + coords[0], starty + coords[1], startx + coords[2], starty + coords[3]))
+                    f.append(getIntegralValue(self.u, startx + coords[0], starty + coords[1], startx + coords[2], starty + coords[3]))
+                    f.append(getIntegralValue(self.v, startx + coords[0], starty + coords[1], startx + coords[2], starty + coords[3]))
+                    f.append(getIntegralValue(self.g, startx + coords[0], starty + coords[1], startx + coords[2], starty + coords[3]))
+
+                for bin in self.integrals:
+                    f.append(getIntegralValue(bin, startx + coords[0], starty + coords[1], startx + coords[2], starty + coords[3]))
+                feature.append(f)
 
         return feature
 

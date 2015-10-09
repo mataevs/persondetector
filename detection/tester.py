@@ -131,7 +131,7 @@ def test_multiscale_checker(
         checker,
         resultsFile):
     hog_classifier = tester_hog.load_classifier(hog_classifier_file)
-    icf_classifier = tester_icf.load_classifier(icf_classifier_file)
+    # icf_classifier = tester_icf.load_classifier(icf_classifier_file)
 
     filepaths = [
         "/home/mataevs/captures/metadata/dump_05_05_01_50",
@@ -171,8 +171,8 @@ def test_multiscale_checker(
     ]
     scaleSteps = [35, 45, 65, 90]
 
-    # resultsHog = open(resultsFile + "hog.txt", "w")
-    resultsIcf = open(resultsFile + "icf.txt", "w")
+    resultsHog = open(resultsFile + "hog.txt", "w")
+    # resultsIcf = open(resultsFile + "icf.txt", "w")
 
     sample = 0
     for imgPath in checker.getFileList():
@@ -197,53 +197,47 @@ def test_multiscale_checker(
 
         height, width, _ = img.shape
 
+        posWindowsHog = tester_hog.test_img(hog_classifier, imgPath, imgScales, subwindow=boundingRect)
+        if posWindowsHog != None and posWindowsHog != []:
+            utils.draw_detections(img, posWindowsHog)
 
-
-        # windowsHog = tester_hog.test_img(hog_classifier, imgPath, imgScales, allPositive=True, flow_rgb=flow_rgb, subwindow=boundingRect)
-        # if windowsHog != None and windowsHog != []:
-        #     scale = windowsHog[0][4]
-        #     img_hog = cv2.resize(img, (0, 0), fx=scale, fy=scale)
-        #     utils.draw_detections(img_hog, windowsHog)
-        # else:
-        #     scale = 0.5
-        #     img_hog = cv2.resize(img, (0, 0), fx=scale, fy=scale)
-        # cv2.imwrite(hog_result_dir + "/sample_2_" + str(sample) + ".jpg", img_hog)
-        #
-        # # Check detections
-        # detections, truePositive = checker.checkDetections(imgPath, windowsHog)
-        # c = Counter(detections)
-        # truePositives = c[True]
-        # falsePositives = c[False]
-        # falseNegative = 0 if truePositive else 1
-        # resultsHog.write(imgPath + " tp=" + str(truePositives) + " fp=" + str(falsePositives) + " fn=" + str(falseNegative) + "\n")
-
-        beforeIcf = time.time()
-        windowsIcf = tester_icf.test_img(icf_classifier, imgPath, imgScales, allPositive=True, subwindow=boundingRect)
-        afterIcf = time.time()
-
-        print "Sample", sample, "time elapsed=", afterIcf-beforeIcf
-
-        if windowsIcf != None and windowsIcf != []:
-            scale = windowsIcf[0][4]
-            img_icf = cv2.resize(img, (0, 0), fx=scale, fy=scale)
-            utils.draw_detections(img_icf, windowsIcf)
-        else:
-            scale = 0.5
-            img_icf = cv2.resize(img, (0, 0), fx=scale, fy=scale)
-        cv2.imwrite(icf_result_dir + "/sample_2_" + str(sample) + ".jpg", img_icf)
+        cv2.imwrite(hog_result_dir + "/sample_2_" + str(sample) + ".jpg", img)
 
         # Check detections
-        detections, truePositive = checker.checkDetections(imgPath, windowsIcf)
+        detections, truePositive = checker.checkDetections(imgPath, posWindowsHog)
         c = Counter(detections)
         truePositives = c[True]
         falsePositives = c[False]
         falseNegative = 0 if truePositive else 1
-        resultsIcf.write(imgPath + " tp=" + str(truePositives) + " fp=" + str(falsePositives) + " fn=" + str(falseNegative) + "\n")
+        resultsHog.write(imgPath + " tp=" + str(truePositives) + " fp=" + str(falsePositives) + " fn=" + str(falseNegative) + "\n")
+
+        # beforeIcf = time.time()
+        # windowsIcf = tester_icf.test_img(icf_classifier, imgPath, imgScales, allPositive=True, subwindow=boundingRect)
+        # afterIcf = time.time()
+        #
+        # print "Sample", sample, "time elapsed=", afterIcf-beforeIcf
+        #
+        # if windowsIcf != None and windowsIcf != []:
+        #     scale = windowsIcf[0][4]
+        #     img_icf = cv2.resize(img, (0, 0), fx=scale, fy=scale)
+        #     utils.draw_detections(img_icf, windowsIcf)
+        # else:
+        #     scale = 0.5
+        #     img_icf = cv2.resize(img, (0, 0), fx=scale, fy=scale)
+        # cv2.imwrite(icf_result_dir + "/sample_2_" + str(sample) + ".jpg", img_icf)
+        #
+        # # Check detections
+        # detections, truePositive = checker.checkDetections(imgPath, windowsIcf)
+        # c = Counter(detections)
+        # truePositives = c[True]
+        # falsePositives = c[False]
+        # falseNegative = 0 if truePositive else 1
+        # resultsIcf.write(imgPath + " tp=" + str(truePositives) + " fp=" + str(falsePositives) + " fn=" + str(falseNegative) + "\n")
 
         sample += 1
 
     # resultsHog.close()
-    resultsIcf.close()
+    # resultsIcf.close()
 
 # test_multiscale("hog/svm.dump",
 #                 "icf_new_5000_2000_1k.dump",
@@ -253,9 +247,9 @@ def test_multiscale_checker(
 
 checker = detection_checker.Checker("annotations.txt")
 test_multiscale_checker("hog/svm.dump",
-                "icf_new_5000f_2000e.dump",
+                "icf_classifiers/icf_new_5000f_2000e.dump",
                 "./hog_result_dir",
-                "./icf_5000f_2000e",
+                "./icf_5000_2000",
                 checker,
-                "results_5000f_2000e_")
+                "results_hog_")
 
